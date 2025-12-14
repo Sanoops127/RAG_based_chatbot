@@ -62,7 +62,7 @@ streamlit run streamlit_app.py
 
 Access the UI at: `http://localhost:8501`
 
-### 3. Running with Docker (Recommended)
+### 3. Running with Docker
 
 You can also run the entire application using Docker Compose.
 
