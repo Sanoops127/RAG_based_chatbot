@@ -5,7 +5,7 @@ from logger_config import setup_logger
 
 logger = setup_logger("streamlit_app")
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="RAG Subject Chatbot", layout="wide")
 

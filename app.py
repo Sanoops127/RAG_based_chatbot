@@ -12,13 +12,12 @@ from logger_config import setup_logger
 
 logger = setup_logger(__name__)
 
-# Create tables
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="RAG Chatbot API")
 rag_service = RAGService()
 
-# Ensure uploads directory exists
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -63,27 +62,26 @@ def upload_document(
     
     logger.info(f"Uploading document {file.filename} for subject {subject_id}")
 
-    # Save file locally
+
     file_location = f"{UPLOAD_DIR}/{subject_id}_{file.filename}"
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Read file content for processing
     with open(file_location, "rb") as f:
         content = f.read()
 
     try:
-        # Extract text
+
         text = DocumentProcessor.process_file(content, file.filename)
         
-        # Chunk text
+
         chunks = DocumentProcessor.chunk_text(text)
         
-        # Add to Vector DB
+
         metadatas = [{"filename": file.filename, "subject_id": subject_id} for _ in chunks]
         rag_service.add_documents(subject_id, chunks, metadatas)
         
-        # Save to SQL DB
+
         new_doc = models.Document(
             subject_id=subject_id,
             filename=file.filename,

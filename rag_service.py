@@ -1,8 +1,8 @@
 import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
-import google.generativeai as genai
 import os
+from groq import Groq
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from logger_config import setup_logger
@@ -13,22 +13,21 @@ load_dotenv()
 
 class RAGService:
     def __init__(self):
-        # Initialize ChromaDB
+
         self.chroma_client = chromadb.PersistentClient(path=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"))
         
-        # Initialize Embedding Model
+
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # Initialize Gemini
-        api_key = os.getenv("GEMINI_API_KEY")
+
+        api_key = os.getenv("GROQ_API_KEY")
         if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
-            logger.info("Gemini API configured successfully")
+            self.client = Groq(api_key=api_key)
+            self.model = "llama-3.1-8b-instant"
+            logger.info("Groq API configured successfully")
         else:
-            logger.warning("GEMINI_API_KEY not found in environment variables.")
-            print("Warning: GEMINI_API_KEY not found in environment variables.")
-            self.model = None
+            logger.warning("GROQ_API_KEY not found in environment variables.")
+            print("Warning: GROQ_API_KEY not found in environment variables.")
+            self.client = None
 
     def _get_collection_name(self, subject_id: int) -> str:
         return f"subject_{subject_id}"
@@ -71,43 +70,49 @@ class RAGService:
             logger.info(f"No matching documents found for query: {query_text}")
             return {"answer": "No information found in the subject documents.", "sources": []}
 
-        # Filter by distance (similarity threshold)
-        # Chroma returns distance (lower is better for L2, but we want cosine similarity equivalent)
-        # For simplicity with default Chroma (L2), we'll check if distances are reasonable.
-        # A distance > 1.5 in L2 for normalized vectors roughly means low similarity.
-        # Let's just use the top results for now and let the LLM decide relevance.
-        
         retrieved_docs = results['documents'][0]
         sources = [m.get('filename', 'unknown') for m in results['metadatas'][0]]
 
         # Construct Prompt
         context = "\n\n".join(retrieved_docs)
-        prompt = f"""You are a helpful assistant answering questions based strictly on the provided documents.
         
-        Context:
+        system_prompt = "You are a precise assistant. You answer questions based ONLY on the provided context."
+        user_prompt = f"""Context:
         {context}
         
         Question: {query_text}
         
         Instructions:
-        1. Answer the question using ONLY the information from the Context above.
-        2. If the answer is not in the Context, say "No information found in the subject documents."
-        3. Do not use outside knowledge.
-        4, If the user begins with greeting,politly greet back and ask How can I help you? if user mentions greeting only.
-        
-        Answer:"""
+        1. **Greeting Check**: If the user's input is primarily a greeting (e.g., "Hi", "Hello", "Good morning"), respond with a polite greeting and ask how you can help. Do NOT greet if the user asks a specific question.
+        2. **Missing Information**: If the answer to the Question is NOT present in the Context, you MUST output EXACTLY this phrase and nothing else: "No information found in the subject documents."
+        3. **Answering**: If the answer IS in the Context, provide the answer detaily and directly. Do NOT start with "Hello" or "Based on the documents".
+        4. **Strictness**: Do not use outside knowledge. Do not hallucinate."""
 
-        if self.model:
+        if self.client:
             try:
-                logger.info("Generating response from Gemini")
-                response = self.model.generate_content(prompt)
-                answer = response.text
-                logger.info("Generated response from Gemini")
+                logger.info("Generating response from Groq")
+                chat_completion = self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt
+                        },
+                        {
+                            "role": "user",
+                            "content": user_prompt
+                        }
+                    ],
+                    model=self.model,
+                    temperature=0.7,
+                    max_tokens=1024,
+                )
+                answer = chat_completion.choices[0].message.content
+                logger.info("Generated response from Groq")
             except Exception as e:
                 logger.error(f"Error generating response from LLM: {str(e)}")
                 answer = f"Error generating response from LLM: {str(e)}"
         else:
-            answer = "LLM not configured. Please set GEMINI_API_KEY."
+            answer = "LLM not configured. Please set GROQ_API_KEY."
 
         return {
             "answer": answer,

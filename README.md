@@ -7,7 +7,7 @@ This project is a Retrieval-Augmented Generation (RAG) based chatbot that allows
 - **Subject Management**: Create and organize documents by subjects (e.g., HR, Finance).
 - **Document Processing**: Supports PDF and Text file uploads with automatic text extraction.
 - **RAG Architecture**: Uses ChromaDB for vector storage and `sentence-transformers` for embeddings.
-- **LLM Integration**: Uses Google Gemini API for generating natural language responses.
+- **LLM Integration**: Uses Grok cloud LLM(llama-3.1-8b-instant) for generating natural language responses.
 - **Dual Interface**:
   - **FastAPI Backend**: Robust REST API.
   - **Streamlit Frontend**: User-friendly web interface.
@@ -15,7 +15,7 @@ This project is a Retrieval-Augmented Generation (RAG) based chatbot that allows
 ## Tech Stack
 
 - **Backend**: FastAPI, SQLAlchemy, SQLite
-- **AI/ML**: LangChain (concepts), ChromaDB, SentenceTransformers, Google Gemini
+- **AI/ML**: LangChain (concepts), ChromaDB, SentenceTransformers, Grok cloud LLM
 - **Frontend**: Streamlit
 - **Language**: Python 3.8+
 
@@ -24,7 +24,7 @@ This project is a Retrieval-Augmented Generation (RAG) based chatbot that allows
 1. **Clone the repository**
 
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/Sanoops127/RAG_based_chatbot.git
    cd RAG_based_chatbot
    ```
 
@@ -32,7 +32,7 @@ This project is a Retrieval-Augmented Generation (RAG) based chatbot that allows
 
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate
    ```
 
 3. **Install Dependencies**
@@ -40,14 +40,7 @@ This project is a Retrieval-Augmented Generation (RAG) based chatbot that allows
    ```bash
    pip install -r requirements.txt
    ```
-
-4. **Environment Configuration**
-   - Copy `.env.example` to `.env`
-   - Add your Google Gemini API Key
-   ```bash
-   cp .env.example .env
-   # Open .env and set GEMINI_API_KEY
-   ```
+   
 
 ## Running the Application
 
@@ -69,10 +62,30 @@ streamlit run streamlit_app.py
 
 Access the UI at: `http://localhost:8501`
 
+### 3. Running with Docker (Recommended)
+
+You can also run the entire application using Docker Compose.
+
+1.  **Build and Run**
+
+    ```bash
+    docker-compose up --build
+    ```
+
+2.  **Access the Application**
+
+    - Frontend: `http://localhost:8501`
+    - Backend API Docs: `http://localhost:8000/docs`
+
+3.  **Stop the Application**
+    ```bash
+    docker-compose down
+    ```
+
 ## Section B: Machine Test Questions
 
 **1. Describe your RAG approach in 4–5 lines.**
-I implemented a standard RAG pipeline: Documents are uploaded and text is extracted (using PyPDF2). The text is split into 500-character chunks with overlap to maintain context. These chunks are embedded using `all-MiniLM-L6-v2` and stored in ChromaDB. When a user asks a question, we retrieve the top 5 most similar chunks using cosine similarity and pass them as context to the Gemini LLM to generate a grounded answer.
+I implemented a standard RAG pipeline: Documents are uploaded and text is extracted (using PyPDF2). The text is split into 500-character chunks with overlap to maintain context. These chunks are embedded using `all-MiniLM-L6-v2` and stored in ChromaDB. When a user asks a question, we retrieve the top 5 most similar chunks using cosine similarity and pass them as context to the Grok cloud LLM(llama-3.1-8b-instant) to generate a grounded answer.
 
 **2. Why did you choose your embedding model?**
 I chose `sentence-transformers/all-MiniLM-L6-v2` because it offers an excellent balance between speed and performance. It is lightweight (small model size), runs efficiently on CPU (important for local deployment), and provides high-quality semantic embeddings suitable for retrieval tasks.
